@@ -38,7 +38,7 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isAccountNonLocked() {
-        return true;
+        return appUser.getEnabled();
     }
 
     @Override
@@ -48,6 +48,6 @@ public class UserPrincipal implements UserDetails {
 
     @Override
     public boolean isEnabled() {
-        return true;
+        return appUser.getEnabled();
     }
 }

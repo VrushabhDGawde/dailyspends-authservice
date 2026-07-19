@@ -18,8 +18,10 @@ public class CustomUserDetailsService implements UserDetailsService {
     public UserDetails loadUserByUsername(String username)
             throws UsernameNotFoundException {
 
-        AppUser appUser = appUserRepository.findByEmail(username)
-                .orElseThrow(() -> new UsernameNotFoundException("User not found"));
+        String emailToFind = "admin".equalsIgnoreCase(username) ? "admin@dailyspends.com" : username;
+
+        AppUser appUser = appUserRepository.findByEmail(emailToFind)
+                .orElseThrow(() -> new UsernameNotFoundException("User not found with email/username: " + username));
 
         return new UserPrincipal(appUser);
     }

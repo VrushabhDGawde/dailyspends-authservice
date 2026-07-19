@@ -27,7 +27,12 @@ public class JwtService {
     private long refreshTokenExpiration;
 
     public String generateAccessToken(UserDetails userDetails) {
-        return generateToken(new HashMap<>(), userDetails, accessTokenExpiration);
+        Map<String, Object> claims = new HashMap<>();
+        var authorities = userDetails.getAuthorities();
+        if (authorities != null && !authorities.isEmpty()) {
+            claims.put("role", authorities.iterator().next().getAuthority());
+        }
+        return generateToken(claims, userDetails, accessTokenExpiration);
     }
 
     public String generateRefreshToken(UserDetails userDetails) {
