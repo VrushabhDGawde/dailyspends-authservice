@@ -55,6 +55,15 @@ public class AppUser {
     @Column(name = "savings_percentage")
     private Double savingsPercentage;
 
+    @Column(name = "dob", length = 50)
+    private String dob;
+
+    @Column(name = "occupation", length = 100)
+    private String occupation;
+
+    @Column(name = "is_profile_complete")
+    private Boolean isProfileComplete = false;
+
     @Column(nullable = false)
     private Boolean enabled = true;
 

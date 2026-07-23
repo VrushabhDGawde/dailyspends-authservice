@@ -14,4 +14,7 @@ public class UserProfileDTO {
     private String email;
     private Double salary;
     private Double savingsPercentage;
+    private String dob;
+    private String occupation;
+    private Boolean isProfileComplete;
 }

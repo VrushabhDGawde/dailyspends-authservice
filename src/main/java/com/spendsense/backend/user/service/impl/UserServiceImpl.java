@@ -32,19 +32,50 @@ public class UserServiceImpl implements UserService {
             user.setFullName(request.getFullName().trim());
         }
         
-        user.setSalary(request.getSalary());
-        user.setSavingsPercentage(request.getSavingsPercentage());
+        if (request.getSalary() != null) {
+            user.setSalary(request.getSalary());
+        }
+
+        if (request.getSavingsPercentage() != null) {
+            user.setSavingsPercentage(request.getSavingsPercentage());
+        }
+
+        if (request.getDob() != null && !request.getDob().trim().isEmpty()) {
+            user.setDob(request.getDob().trim());
+        }
+
+        if (request.getOccupation() != null && !request.getOccupation().trim().isEmpty()) {
+            user.setOccupation(request.getOccupation().trim());
+        }
+
+        if (Boolean.TRUE.equals(request.getIsProfileComplete())) {
+            user.setIsProfileComplete(true);
+        } else if (user.getSalary() != null && user.getSalary() > 0 &&
+                   user.getSavingsPercentage() != null &&
+                   user.getDob() != null && !user.getDob().trim().isEmpty() &&
+                   user.getOccupation() != null && !user.getOccupation().trim().isEmpty()) {
+            user.setIsProfileComplete(true);
+        }
 
         userRepository.save(user);
         return mapToDTO(user);
     }
 
     private UserProfileDTO mapToDTO(AppUser user) {
+        boolean isComplete = Boolean.TRUE.equals(user.getIsProfileComplete()) ||
+                (user.getSalary() != null && user.getSalary() > 0 &&
+                 user.getSavingsPercentage() != null &&
+                 user.getDob() != null && !user.getDob().trim().isEmpty() &&
+                 user.getOccupation() != null && !user.getOccupation().trim().isEmpty());
+
         return UserProfileDTO.builder()
                 .fullName(user.getFullName())
                 .email(user.getEmail())
                 .salary(user.getSalary())
                 .savingsPercentage(user.getSavingsPercentage())
+                .dob(user.getDob())
+                .occupation(user.getOccupation())
+                .isProfileComplete(isComplete)
                 .build();
     }
 }
