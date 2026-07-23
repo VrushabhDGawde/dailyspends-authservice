@@ -49,8 +49,14 @@ public class AppUser {
     @Column(nullable = false, length = 20)
     private Role role;
 
+    @Column(name = "salary")
+    private Double salary;
+
+    @Column(name = "savings_percentage")
+    private Double savingsPercentage;
+
     @Column(nullable = false)
-    private Boolean enabled;
+    private Boolean enabled = true;
 
     @Column(name = "email_verified", nullable = false)
     private Boolean emailVerified;
