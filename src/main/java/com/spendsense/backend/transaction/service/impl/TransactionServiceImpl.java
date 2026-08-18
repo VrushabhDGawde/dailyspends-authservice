@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -65,6 +66,40 @@ public class TransactionServiceImpl implements TransactionService {
 
     @Override
     @Transactional
+    public List<TransactionDTO> addTransactionsBatch(String email, List<TransactionDTO> requests) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        List<Transaction> entities = new ArrayList<>();
+        for (TransactionDTO request : requests) {
+            Transaction transaction = Transaction.builder()
+                    .userId(user.getId())
+                    .sender(request.getSender())
+                    .smsBody(request.getSmsBody())
+                    .receivedAt(request.getReceivedAt())
+                    .amount(request.getAmount())
+                    .transactionType(request.getTransactionType())
+                    .paymentMode(request.getPaymentMode())
+                    .accountRef(request.getAccountRef())
+                    .merchantRaw(request.getMerchantRaw())
+                    .merchantClean(request.getMerchantClean())
+                    .category(request.getCategory())
+                    .postBalance(request.getPostBalance())
+                    .transactionDate(request.getTransactionDate())
+                    .isRecurring(request.getIsRecurring() != null ? request.getIsRecurring() : false)
+                    .counterpartyType(request.getCounterpartyType())
+                    .upiRef(request.getUpiRef())
+                    .isReviewed(request.getIsReviewed() != null ? request.getIsReviewed() : false)
+                    .build();
+            entities.add(transaction);
+        }
+
+        List<Transaction> saved = transactionRepository.saveAll(entities);
+        return saved.stream().map(this::mapToDTO).collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
     public TransactionDTO updateTransaction(String email, Long id, TransactionDTO request) {
         AppUser user = userRepository.findByEmail(email)
                 .orElseThrow(() -> new UserNotFoundException("User not found"));
@@ -79,8 +114,10 @@ public class TransactionServiceImpl implements TransactionService {
         if (request.getIsReviewed() != null) transaction.setIsReviewed(request.getIsReviewed());
         if (request.getCategory() != null) transaction.setCategory(request.getCategory());
         if (request.getMerchantClean() != null) transaction.setMerchantClean(request.getMerchantClean());
+        if (request.getAmount() != null) transaction.setAmount(request.getAmount());
+        if (request.getTransactionType() != null) transaction.setTransactionType(request.getTransactionType());
+        if (request.getTransactionDate() != null) transaction.setTransactionDate(request.getTransactionDate());
         
-        // Save the updated transaction
         Transaction updated = transactionRepository.save(transaction);
         return mapToDTO(updated);
     }

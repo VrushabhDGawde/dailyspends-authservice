@@ -3,6 +3,7 @@ package com.spendsense.backend.transaction.controller;
 import com.spendsense.backend.transaction.dto.TransactionDTO;
 import com.spendsense.backend.transaction.service.TransactionService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -21,11 +22,25 @@ public class TransactionController {
         return ResponseEntity.ok(transactionService.getUserTransactions(authentication.getName()));
     }
 
-    @PostMapping("/manual")
+    @PostMapping
     public ResponseEntity<TransactionDTO> addTransaction(
             Authentication authentication,
             @RequestBody TransactionDTO request) {
-        return ResponseEntity.ok(transactionService.addTransaction(authentication.getName(), request));
+        return new ResponseEntity<>(transactionService.addTransaction(authentication.getName(), request), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/manual")
+    public ResponseEntity<TransactionDTO> addTransactionManual(
+            Authentication authentication,
+            @RequestBody TransactionDTO request) {
+        return new ResponseEntity<>(transactionService.addTransaction(authentication.getName(), request), HttpStatus.CREATED);
+    }
+
+    @PostMapping("/batch")
+    public ResponseEntity<List<TransactionDTO>> addTransactionsBatch(
+            Authentication authentication,
+            @RequestBody List<TransactionDTO> requests) {
+        return new ResponseEntity<>(transactionService.addTransactionsBatch(authentication.getName(), requests), HttpStatus.CREATED);
     }
 
     @PutMapping("/{id}")
