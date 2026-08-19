@@ -10,6 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.spendsense.backend.auth.dto.request.RefreshTokenRequest;
+import com.spendsense.backend.auth.dto.request.GoogleLoginRequest;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -29,6 +30,12 @@ public class AuthController {
             @Valid @RequestBody LoginRequest request) {
 
         return authService.login(request);
+    }
+
+    @PostMapping("/google")
+    public ResponseEntity<LoginResponse> googleLogin(
+            @Valid @RequestBody GoogleLoginRequest request) {
+        return ResponseEntity.ok(authService.loginWithGoogle(request));
     }
 
     @PostMapping("/refresh-token")

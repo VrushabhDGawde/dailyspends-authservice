@@ -2,6 +2,7 @@ package com.spendsense.backend.auth.service.impl;
 
 import com.spendsense.backend.auth.dto.RegisterRequest;
 import com.spendsense.backend.auth.dto.RegisterResponse;
+import com.spendsense.backend.auth.dto.request.GoogleLoginRequest;
 import com.spendsense.backend.auth.dto.request.LoginRequest;
 import com.spendsense.backend.auth.dto.request.RefreshTokenRequest;
 import com.spendsense.backend.auth.dto.response.LoginResponse;
@@ -10,7 +11,9 @@ import com.spendsense.backend.auth.entity.RefreshToken;
 import com.spendsense.backend.auth.repository.AppUserRepository;
 import com.spendsense.backend.auth.service.AuthService;
 import com.spendsense.backend.auth.service.RefreshTokenService;
+import com.spendsense.backend.common.enums.Role;
 import com.spendsense.backend.common.exception.EmailAlreadyExistsException;
+import com.spendsense.backend.common.exception.InvalidCredentialsException;
 import com.spendsense.backend.common.exception.InvalidRefreshTokenException;
 import com.spendsense.backend.security.jwt.JwtService;
 import com.spendsense.backend.security.service.UserPrincipal;
@@ -22,6 +25,9 @@ import org.springframework.security.core.Authentication;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.client.RestTemplate;
+import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Service
@@ -33,6 +39,7 @@ public class AuthServiceImpl implements AuthService {
         private final AuthenticationManager authenticationManager;
         private final JwtService jwtService;
         private final RefreshTokenService refreshTokenService;
+        private final RestTemplate restTemplate = new RestTemplate();
 
         @Override
         @Transactional
@@ -77,6 +84,58 @@ public class AuthServiceImpl implements AuthService {
                 RefreshToken refreshToken = refreshTokenService.createRefreshToken(appUser);
 
                 log.info("User logged in successfully: {}", request.getEmail());
+
+                return LoginResponse.builder()
+                                .accessToken(accessToken)
+                                .refreshToken(refreshToken.getToken())
+                                .build();
+        }
+
+        @Override
+        @Transactional
+        public LoginResponse loginWithGoogle(GoogleLoginRequest request) {
+                log.info("Attempting Google login/registration");
+
+                String email = null;
+                String fullName = null;
+
+                try {
+                        String verifyUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + request.getIdToken();
+                        Map<String, Object> payload = restTemplate.getForObject(verifyUrl, Map.class);
+
+                        if (payload != null && payload.containsKey("email")) {
+                                email = (String) payload.get("email");
+                                fullName = (String) payload.getOrDefault("name", email.split("@")[0]);
+                        }
+                } catch (Exception e) {
+                        log.warn("Google tokeninfo verification failed: {}", e.getMessage());
+                }
+
+                if (email == null || email.isBlank()) {
+                        throw new InvalidCredentialsException("Invalid or expired Google ID Token.");
+                }
+
+                email = email.trim().toLowerCase();
+                AppUser appUser = appUserRepository.findByEmail(email).orElse(null);
+
+                if (appUser == null) {
+                        log.info("Creating new Google user account for email: {}", email);
+                        appUser = AppUser.builder()
+                                        .fullName(fullName != null ? fullName : email.split("@")[0])
+                                        .email(email)
+                                        .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                                        .role(Role.USER)
+                                        .enabled(true)
+                                        .emailVerified(true)
+                                        .build();
+                        appUser = appUserRepository.save(appUser);
+                } else {
+                        log.info("Existing Google user account loaded for email: {}", email);
+                }
+
+                UserPrincipal userPrincipal = new UserPrincipal(appUser);
+                String accessToken = jwtService.generateAccessToken(userPrincipal);
+                RefreshToken refreshToken = refreshTokenService.createRefreshToken(appUser);
 
                 return LoginResponse.builder()
                                 .accessToken(accessToken)

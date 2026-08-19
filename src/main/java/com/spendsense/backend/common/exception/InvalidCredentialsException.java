@@ -1,4 +1,7 @@
 package com.spendsense.backend.common.exception;
 
-public class InvalidCredentialsException {
+public class InvalidCredentialsException extends RuntimeException {
+    public InvalidCredentialsException(String message) {
+        super(message);
+    }
 }
