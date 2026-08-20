@@ -3,14 +3,17 @@ package com.spendsense.backend.transaction.service.impl;
 import com.spendsense.backend.auth.entity.AppUser;
 import com.spendsense.backend.auth.repository.AppUserRepository;
 import com.spendsense.backend.common.exception.UserNotFoundException;
+import com.spendsense.backend.transaction.dto.SmsIngestRequest;
 import com.spendsense.backend.transaction.dto.TransactionDTO;
 import com.spendsense.backend.transaction.entity.Transaction;
 import com.spendsense.backend.transaction.repository.TransactionRepository;
+import com.spendsense.backend.transaction.service.SmsParserService;
 import com.spendsense.backend.transaction.service.TransactionService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.stream.Collectors;
@@ -21,6 +24,7 @@ public class TransactionServiceImpl implements TransactionService {
 
     private final TransactionRepository transactionRepository;
     private final AppUserRepository userRepository;
+    private final SmsParserService smsParserService;
 
     @Override
     @Transactional(readOnly = true)
@@ -32,6 +36,59 @@ public class TransactionServiceImpl implements TransactionService {
                 .stream()
                 .map(this::mapToDTO)
                 .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<TransactionDTO> getUnreviewedTransactions(String email) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        return transactionRepository.findByUserIdAndIsReviewedFalseOrderByTransactionDateDesc(user.getId())
+                .stream()
+                .map(this::mapToDTO)
+                .collect(Collectors.toList());
+    }
+
+    @Override
+    @Transactional
+    public TransactionDTO ingestSms(String email, SmsIngestRequest request) {
+        String targetEmail = (email != null && !email.isBlank()) ? email : request.getUserEmail();
+        AppUser user = userRepository.findByEmail(targetEmail)
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + targetEmail));
+
+        Transaction transaction = Transaction.builder()
+                .userId(user.getId())
+                .sender(request.getSender())
+                .smsBody(request.getSmsBody())
+                .receivedAt(Instant.now())
+                .build();
+
+        // 🧠 Auto-parse with regex engine
+        transaction = smsParserService.parseAndPopulate(transaction);
+        transaction.setUserId(user.getId());
+        transaction.setIsReviewed(false);
+
+        Transaction saved = transactionRepository.save(transaction);
+        return mapToDTO(saved);
+    }
+
+    @Override
+    @Transactional
+    public TransactionDTO markAsReviewed(String email, Long id, boolean reviewed) {
+        AppUser user = userRepository.findByEmail(email)
+                .orElseThrow(() -> new UserNotFoundException("User not found"));
+
+        Transaction transaction = transactionRepository.findById(id)
+                .orElseThrow(() -> new RuntimeException("Transaction not found: " + id));
+
+        if (!transaction.getUserId().equals(user.getId())) {
+            throw new RuntimeException("Unauthorized to update this transaction");
+        }
+
+        transaction.setIsReviewed(reviewed);
+        Transaction updated = transactionRepository.save(transaction);
+        return mapToDTO(updated);
     }
 
     @Override

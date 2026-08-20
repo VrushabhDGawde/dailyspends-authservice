@@ -1,7 +1,9 @@
 package com.spendsense.backend.transaction.controller;
 
+import com.spendsense.backend.transaction.dto.SmsIngestRequest;
 import com.spendsense.backend.transaction.dto.TransactionDTO;
 import com.spendsense.backend.transaction.service.TransactionService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +22,27 @@ public class TransactionController {
     @GetMapping
     public ResponseEntity<List<TransactionDTO>> getTransactions(Authentication authentication) {
         return ResponseEntity.ok(transactionService.getUserTransactions(authentication.getName()));
+    }
+
+    @GetMapping("/unreviewed")
+    public ResponseEntity<List<TransactionDTO>> getUnreviewedTransactions(Authentication authentication) {
+        return ResponseEntity.ok(transactionService.getUnreviewedTransactions(authentication.getName()));
+    }
+
+    @PostMapping("/ingest")
+    public ResponseEntity<TransactionDTO> ingestSms(
+            Authentication authentication,
+            @Valid @RequestBody SmsIngestRequest request) {
+        String email = authentication != null ? authentication.getName() : request.getUserEmail();
+        return new ResponseEntity<>(transactionService.ingestSms(email, request), HttpStatus.CREATED);
+    }
+
+    @PatchMapping("/{id}/review")
+    public ResponseEntity<TransactionDTO> markReviewed(
+            Authentication authentication,
+            @PathVariable Long id,
+            @RequestParam(defaultValue = "true") boolean reviewed) {
+        return ResponseEntity.ok(transactionService.markAsReviewed(authentication.getName(), id, reviewed));
     }
 
     @PostMapping

@@ -95,25 +95,44 @@ public class AuthServiceImpl implements AuthService {
         @Override
         @Transactional
         public LoginResponse loginWithGoogle(GoogleLoginRequest request) {
-                log.info("Attempting Google login/registration");
+                log.info("Attempting genuine Google login/registration");
 
                 String email = null;
                 String fullName = null;
+                String token = request.getIdToken();
 
+                if (token == null || token.isBlank()) {
+                        throw new InvalidCredentialsException("Google ID Token is required.");
+                }
+
+                // 1. Verify ID Token with Google's OAuth2 TokenInfo API
                 try {
-                        String verifyUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + request.getIdToken();
+                        String verifyUrl = "https://oauth2.googleapis.com/tokeninfo?id_token=" + token;
                         Map<String, Object> payload = restTemplate.getForObject(verifyUrl, Map.class);
-
                         if (payload != null && payload.containsKey("email")) {
                                 email = (String) payload.get("email");
                                 fullName = (String) payload.getOrDefault("name", email.split("@")[0]);
                         }
                 } catch (Exception e) {
-                        log.warn("Google tokeninfo verification failed: {}", e.getMessage());
+                        log.warn("Google ID token verification failed: {}", e.getMessage());
+                }
+
+                // 2. If access_token format was supplied, verify via Google UserInfo API
+                if (email == null) {
+                        try {
+                                String verifyUrl = "https://www.googleapis.com/oauth2/v3/userinfo?access_token=" + token;
+                                Map<String, Object> payload = restTemplate.getForObject(verifyUrl, Map.class);
+                                if (payload != null && payload.containsKey("email")) {
+                                        email = (String) payload.get("email");
+                                        fullName = (String) payload.getOrDefault("name", email.split("@")[0]);
+                                }
+                        } catch (Exception e) {
+                                log.warn("Google UserInfo verification failed: {}", e.getMessage());
+                        }
                 }
 
                 if (email == null || email.isBlank()) {
-                        throw new InvalidCredentialsException("Invalid or expired Google ID Token.");
+                        throw new InvalidCredentialsException("Invalid or expired Google ID Token. Please sign in again.");
                 }
 
                 email = email.trim().toLowerCase();
