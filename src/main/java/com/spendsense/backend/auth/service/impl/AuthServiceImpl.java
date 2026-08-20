@@ -3,6 +3,7 @@ package com.spendsense.backend.auth.service.impl;
 import com.spendsense.backend.auth.dto.RegisterRequest;
 import com.spendsense.backend.auth.dto.RegisterResponse;
 import com.spendsense.backend.auth.dto.request.GoogleLoginRequest;
+import com.spendsense.backend.auth.dto.request.AppleLoginRequest;
 import com.spendsense.backend.auth.dto.request.LoginRequest;
 import com.spendsense.backend.auth.dto.request.RefreshTokenRequest;
 import com.spendsense.backend.auth.dto.response.LoginResponse;
@@ -131,6 +132,51 @@ public class AuthServiceImpl implements AuthService {
                         appUser = appUserRepository.save(appUser);
                 } else {
                         log.info("Existing Google user account loaded for email: {}", email);
+                }
+
+                UserPrincipal userPrincipal = new UserPrincipal(appUser);
+                String accessToken = jwtService.generateAccessToken(userPrincipal);
+                RefreshToken refreshToken = refreshTokenService.createRefreshToken(appUser);
+
+                return LoginResponse.builder()
+                                .accessToken(accessToken)
+                                .refreshToken(refreshToken.getToken())
+                                .build();
+        }
+
+        @Override
+        @Transactional
+        public LoginResponse loginWithApple(AppleLoginRequest request) {
+                log.info("Processing Apple Sign-In request");
+
+                String email = request.getEmail();
+                String fullName = request.getFullName();
+
+                // If email is not directly passed (subsequent logins), use userIdentifier or identityToken payload
+                if ((email == null || email.isBlank()) && request.getUserIdentifier() != null) {
+                        email = request.getUserIdentifier().toLowerCase() + "@privaterelay.appleid.com";
+                }
+
+                if (email == null || email.isBlank()) {
+                        throw new InvalidCredentialsException("Invalid or missing Apple User Credentials.");
+                }
+
+                email = email.trim().toLowerCase();
+                AppUser appUser = appUserRepository.findByEmail(email).orElse(null);
+
+                if (appUser == null) {
+                        log.info("Creating new Apple user account for email: {}", email);
+                        appUser = AppUser.builder()
+                                        .fullName(fullName != null && !fullName.isBlank() ? fullName : "Apple User")
+                                        .email(email)
+                                        .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                                        .role(Role.USER)
+                                        .enabled(true)
+                                        .emailVerified(true)
+                                        .build();
+                        appUser = appUserRepository.save(appUser);
+                } else {
+                        log.info("Existing Apple user account loaded for email: {}", email);
                 }
 
                 UserPrincipal userPrincipal = new UserPrincipal(appUser);

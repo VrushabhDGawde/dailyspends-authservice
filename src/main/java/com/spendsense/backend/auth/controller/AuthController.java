@@ -11,6 +11,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import com.spendsense.backend.auth.dto.request.RefreshTokenRequest;
 import com.spendsense.backend.auth.dto.request.GoogleLoginRequest;
+import com.spendsense.backend.auth.dto.request.AppleLoginRequest;
 
 @RestController
 @RequestMapping("/api/v1/auth")
@@ -36,6 +37,12 @@ public class AuthController {
     public ResponseEntity<LoginResponse> googleLogin(
             @Valid @RequestBody GoogleLoginRequest request) {
         return ResponseEntity.ok(authService.loginWithGoogle(request));
+    }
+
+    @PostMapping("/apple")
+    public ResponseEntity<LoginResponse> appleLogin(
+            @Valid @RequestBody AppleLoginRequest request) {
+        return ResponseEntity.ok(authService.loginWithApple(request));
     }
 
     @PostMapping("/refresh-token")

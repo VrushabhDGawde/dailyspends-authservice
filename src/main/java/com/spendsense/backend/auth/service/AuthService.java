@@ -6,6 +6,7 @@ import com.spendsense.backend.auth.dto.request.LoginRequest;
 import com.spendsense.backend.auth.dto.response.LoginResponse;
 import com.spendsense.backend.auth.dto.request.RefreshTokenRequest;
 import com.spendsense.backend.auth.dto.request.GoogleLoginRequest;
+import com.spendsense.backend.auth.dto.request.AppleLoginRequest;
 
 public interface AuthService {
 
@@ -14,6 +15,8 @@ public interface AuthService {
     LoginResponse login(LoginRequest request);
 
     LoginResponse loginWithGoogle(GoogleLoginRequest request);
+
+    LoginResponse loginWithApple(AppleLoginRequest request);
 
     LoginResponse refreshToken(RefreshTokenRequest request);
 
